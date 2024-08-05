@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'Pedido',
     'Usuario',
     'Reseña',
+    'Billetera',
 ]
 
 MIDDLEWARE = [
