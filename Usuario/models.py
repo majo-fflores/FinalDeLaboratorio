@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 class Usuario(AbstractUser):
-    foto_perfil = models.ImageField(upload_to='user/static/')
+    foto_perfil = models.ImageField(upload_to='static/Usuario/default-user.png')
     nombre_completo = models.CharField(max_length=100, blank=False)
     email = models.CharField(max_length=100, blank=False)
     telefono = models.CharField(max_length=50, blank=True, null=True)
