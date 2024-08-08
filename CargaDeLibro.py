@@ -1,23 +1,27 @@
-import os, django, requests 
-from Libro.models import Libro
+import os
+import django
+import requests
+from django.utils.text import slugify
 
 # Configurar el entorno de Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'BookVerse.settings')
 django.setup()
 
+from Libro.models import Libro
 
 # Lista de géneros a crear
 nombres_generos = [
     "Romance", "Fantasy", "Science Fiction", "Mystery",
-    "Horror", "Thriller", "Historical",
+    "Horror", "Thriller", "Historical Fiction",
+    "Woman's Fiction", "LGBTQ+", "Contemporary Fiction"
 ]
 
-# Función para obtener libros de Open Library
-def obtener_libros(query, limit=40):
-    url = f"https://openlibrary.org/search.json?subject={query}&limit={limit}"
+# Función para obtener libros de Google Books
+def obtener_libros(query, max_results=40):
+    url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults={max_results}"
     response = requests.get(url)
     if response.status_code == 200:
-        return response.json().get('docs', [])
+        return response.json().get('items', [])
     else:
         print(f"Error al obtener libros para la consulta '{query}': {response.status_code}")
         return []
@@ -26,35 +30,30 @@ def obtener_libros(query, limit=40):
 def cargar_libros(genero):
     libros = obtener_libros(genero)
     for libro in libros:
-        titulo = libro.get('title', 'Título desconocido')
-        autores = ", ".join(libro.get('author_name', ['Autor desconocido']))
-        isbn_list = libro.get('isbn', [])
+        info = libro['volumeInfo']
+        titulo = info.get('title', 'Título desconocido')
+        autores = ", ".join(info.get('authors', ['Autor desconocido']))
+        isbn_list = [identifier['identifier'] for identifier in info.get('industryIdentifiers', []) if identifier['type'] == 'ISBN_13']
         isbn = isbn_list[0] if isbn_list else None
         if isbn is None:
             continue  # Salta libros sin ISBN
-        sinopsis = libro.get('first_sentence', {}).get('value', f"Libro sobre {genero}")
-        portada = f"http://covers.openlibrary.org/b/isbn/{isbn}-L.jpg" if isbn else None
-        editorial = libro.get('publisher', ['Editorial desconocida'])[0]
+        sinopsis = info.get('description', f"Libro sobre {genero}")
+        portada = info.get('imageLinks', {}).get('thumbnail', None)
+        editorial = info.get('publisher', 'Editorial desconocida')
 
-        # Crear y guardar el libro en la base de datos
-        libro_obj, created = Libro.objects.get_or_create(
+        Libro.objects.create(
+            titulo=titulo,
+            autor=autores,
+            sinopsis=sinopsis,
             isbn=isbn,
-            defaults={
-                'titulo': titulo,
-                'autor': autores,
-                'sinopsis': sinopsis,
-                'genero': genero,
-                'editorial': editorial,
-                'portada': portada,
-            }
+            genero=genero,
+            editorial=editorial,
+            portada=portada
         )
 
-        if created:
-            print(f"Libro '{titulo}' creado.")
-        else:
-            print(f"Libro '{titulo}' ya existe en la base de datos.")
+        print(f"Libro '{titulo}' creado.")
 
-# Cargar al menos 1000 libros distribuidos en los géneros
+# Cargar al menos 1000 libros distribuidos en los 10 géneros
 libros_por_genero = 100
 for genero in nombres_generos:
     cargar_libros(genero)
