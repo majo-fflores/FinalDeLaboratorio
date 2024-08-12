@@ -42,7 +42,6 @@ INSTALLED_APPS = [
     'Pedido',
     'Usuario',
     'Reseña',
-    'Billetera',
     'Home',
     'Wishlist'
 ]
